@@ -9,6 +9,11 @@ import type { SpeechState } from './types';
 /** Reference to the most-recently-created mock SpeechRecognition instance. */
 let inst: SpeechRecognition | null = null;
 
+type MockSpeechRecognitionCtor = (new () => SpeechRecognition) & {
+  available?: typeof SpeechRecognition.available;
+  install?: typeof SpeechRecognition.install;
+};
+
 function createMockInstance(this: SpeechRecognition): void {
   this.lang = '';
   this.continuous = false;
@@ -26,10 +31,31 @@ function createMockInstance(this: SpeechRecognition): void {
 
 function installGlobalMock(): void {
   inst = null;
+  delete (createMockInstance as unknown as MockSpeechRecognitionCtor).available;
+  delete (createMockInstance as unknown as MockSpeechRecognitionCtor).install;
   (window as unknown as Record<string, unknown>).SpeechRecognition =
     createMockInstance as unknown as new () => SpeechRecognition;
   (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
     undefined;
+}
+
+function installLocalMock(
+  availability: SpeechRecognitionAvailability,
+  installResult = true,
+): {
+  available: ReturnType<typeof vi.fn>;
+  install: ReturnType<typeof vi.fn>;
+} {
+  inst = null;
+  const ctor = createMockInstance as unknown as MockSpeechRecognitionCtor;
+  const available = vi.fn().mockResolvedValue(availability);
+  const install = vi.fn().mockResolvedValue(installResult);
+  ctor.available = available;
+  ctor.install = install;
+  (window as unknown as Record<string, unknown>).SpeechRecognition = ctor;
+  (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
+    undefined;
+  return { available, install };
 }
 
 function installThrowingMock(): void {
@@ -50,6 +76,8 @@ function installThrowingMock(): void {
 
 function installWebkitMock(): void {
   inst = null;
+  delete (createMockInstance as unknown as MockSpeechRecognitionCtor).available;
+  delete (createMockInstance as unknown as MockSpeechRecognitionCtor).install;
   (window as unknown as Record<string, unknown>).SpeechRecognition = undefined;
   (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
     createMockInstance as unknown as new () => SpeechRecognition;
@@ -58,6 +86,8 @@ function installWebkitMock(): void {
 function uninstallMock(): void {
   delete (window as unknown as Record<string, unknown>).SpeechRecognition;
   delete (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+  delete (createMockInstance as unknown as MockSpeechRecognitionCtor).available;
+  delete (createMockInstance as unknown as MockSpeechRecognitionCtor).install;
   inst = null;
 }
 
@@ -199,6 +229,80 @@ describe('BrowserSpeechAdapter', () => {
       // The first instance should have been aborted
       expect(firstInst.abort).toHaveBeenCalledOnce();
     });
+
+    it('prefers on-device recognition when the language pack is available', async () => {
+      const { available, install } = installLocalMock('available');
+      const adapter = new BrowserSpeechAdapter();
+
+      adapter.start();
+      await vi.waitFor(() => expect(assertInst().start).toHaveBeenCalledOnce());
+
+      expect(available).toHaveBeenCalledWith({
+        langs: ['zh-CN'],
+        processLocally: true,
+      });
+      expect(install).not.toHaveBeenCalled();
+      expect(assertInst().processLocally).toBe(true);
+    });
+
+    it('installs a downloadable language pack before starting locally', async () => {
+      const { install } = installLocalMock('downloadable');
+      const adapter = new BrowserSpeechAdapter();
+
+      adapter.start();
+      await vi.waitFor(() => expect(assertInst().start).toHaveBeenCalledOnce());
+
+      expect(install).toHaveBeenCalledWith({ langs: ['zh-CN'] });
+      expect(assertInst().processLocally).toBe(true);
+    });
+
+    it('falls back to the online recognizer when local Mandarin is unavailable', async () => {
+      const { install } = installLocalMock('unavailable');
+      const adapter = new BrowserSpeechAdapter();
+
+      adapter.start();
+      await vi.waitFor(() => expect(assertInst().start).toHaveBeenCalledOnce());
+
+      expect(install).not.toHaveBeenCalled();
+      expect(assertInst().processLocally).not.toBe(true);
+    });
+
+    it('falls back to the online recognizer when language-pack installation fails', async () => {
+      const { install } = installLocalMock('downloadable', false);
+      const adapter = new BrowserSpeechAdapter();
+
+      adapter.start();
+      await vi.waitFor(() => expect(assertInst().start).toHaveBeenCalledOnce());
+
+      expect(install).toHaveBeenCalledWith({ langs: ['zh-CN'] });
+      expect(assertInst().processLocally).not.toBe(true);
+    });
+
+    it('does not start after stop while local availability is pending', async () => {
+      inst = null;
+      let resolveAvailability!: (value: SpeechRecognitionAvailability) => void;
+      const ctor = createMockInstance as unknown as MockSpeechRecognitionCtor;
+      ctor.available = vi.fn(
+        () =>
+          new Promise<SpeechRecognitionAvailability>((resolve) => {
+            resolveAvailability = resolve;
+          }),
+      );
+      ctor.install = vi.fn().mockResolvedValue(true);
+      (window as unknown as Record<string, unknown>).SpeechRecognition = ctor;
+      (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
+        undefined;
+      const adapter = new BrowserSpeechAdapter();
+
+      adapter.start();
+      adapter.stop();
+      resolveAvailability('available');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(inst).toBeNull();
+      expect(adapter.state).toBe('idle');
+    });
   });
 
   // ---- result handling ----
@@ -246,6 +350,30 @@ describe('BrowserSpeechAdapter', () => {
 
       expect(results).toHaveLength(0);
       expect(adapter.state).toBe('listening');
+    });
+
+    it('ignores a stale result callback from a superseded session', () => {
+      installGlobalMock();
+      const adapter = new BrowserSpeechAdapter();
+      const results: string[] = [];
+      adapter.subscribe((event) => {
+        if (event.type === 'result') results.push(event.result.transcript);
+      });
+
+      adapter.start();
+      const staleResult = assertInst().onresult;
+      adapter.start();
+      staleResult?.call(assertInst(), {
+        results: {
+          length: 1,
+          0: {
+            isFinal: true,
+            0: { transcript: '打开左前窗', confidence: 1 },
+          },
+        },
+      } as unknown as SpeechRecognitionEvent);
+
+      expect(results).toEqual([]);
     });
   });
 
@@ -365,6 +493,17 @@ describe('BrowserSpeechAdapter', () => {
 
       expect(errors).toHaveLength(0);
       vi.useRealTimers();
+    });
+
+    it('returns the adapter to idle', () => {
+      installGlobalMock();
+      const adapter = new BrowserSpeechAdapter();
+
+      adapter.start();
+      fireOnstart();
+      adapter.stop();
+
+      expect(adapter.state).toBe('idle');
     });
   });
 

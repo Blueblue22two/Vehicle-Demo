@@ -14,6 +14,8 @@ declare global {
     lang: string;
     continuous: boolean;
     interimResults: boolean;
+    /** Request on-device recognition instead of the browser's remote service. */
+    processLocally: boolean;
 
     start(): void;
     stop(): void;
@@ -30,14 +32,33 @@ declare global {
   }
 
   /** Exposed on `window` in Chromium-based browsers. */
-  var SpeechRecognition: {
+  type SpeechRecognitionAvailability =
+    | 'available'
+    | 'downloadable'
+    | 'downloading'
+    | 'unavailable';
+
+  interface SpeechRecognitionAvailabilityOptions {
+    langs: string[];
+    processLocally: boolean;
+  }
+
+  interface SpeechRecognitionInstallOptions {
+    langs: string[];
+  }
+
+  interface SpeechRecognitionConstructor {
     new (): SpeechRecognition;
-  };
+    available(
+      options: SpeechRecognitionAvailabilityOptions,
+    ): Promise<SpeechRecognitionAvailability>;
+    install(options: SpeechRecognitionInstallOptions): Promise<boolean>;
+  }
+
+  var SpeechRecognition: SpeechRecognitionConstructor;
 
   /** Legacy prefixed constructor (Safari / older Chrome). */
-  var webkitSpeechRecognition: {
-    new (): SpeechRecognition;
-  };
+  var webkitSpeechRecognition: SpeechRecognitionConstructor;
 
   /** Event fired when recognition produces results. */
   interface SpeechRecognitionEvent extends Event {

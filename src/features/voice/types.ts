@@ -3,6 +3,7 @@
  *
  * - `idle`: ready to start, no active recognition
  * - `permission`: waiting for browser microphone permission dialog
+ * - `preparing`: checking or installing an on-device language pack
  * - `listening`: actively capturing and recognizing speech
  * - `success`: recognition produced a final transcript
  * - `error`: recognition failed with a recoverable or permanent error
@@ -11,6 +12,7 @@
 export type SpeechState =
   | 'idle'
   | 'permission'
+  | 'preparing'
   | 'listening'
   | 'success'
   | 'error'

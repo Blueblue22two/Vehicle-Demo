@@ -9,9 +9,12 @@ import { ResetCamera } from './ResetCamera';
 import { useDragDetector } from './useDragDetector';
 import { getPerformanceConfig } from './performanceConfig';
 
+const SCENE_BACKGROUND_COLOR = '#e9ecef';
+
 const CANVAS_STYLE: React.CSSProperties = {
   width: '100%',
   height: '100%',
+  backgroundColor: SCENE_BACKGROUND_COLOR,
 };
 
 const POLAR_MIN = (15 * Math.PI) / 180;
@@ -108,6 +111,7 @@ export function VehicleScene() {
     <div
       className="scene-container"
       data-testid="scene-container"
+      style={{ backgroundColor: SCENE_BACKGROUND_COLOR }}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
     >
@@ -120,6 +124,9 @@ export function VehicleScene() {
               antialias: true,
               toneMapping: ACESFilmicToneMapping,
               outputColorSpace: SRGBColorSpace,
+            }}
+            onCreated={({ gl }) => {
+              gl.setClearColor(SCENE_BACKGROUND_COLOR, 1);
             }}
             camera={{
               position: [5, 2.5, 5],

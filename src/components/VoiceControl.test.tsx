@@ -261,7 +261,7 @@ describe('VoiceControl', () => {
 
     it.each([
       ['no-speech', '未检测到语音'],
-      ['network', '网络连接失败'],
+      ['network', '本地语音不可用，且在线识别连接失败'],
       ['timeout', '识别超时'],
       ['aborted', '识别已取消'],
     ])('displays "%s" error message', async (errorCode, expectedText) => {

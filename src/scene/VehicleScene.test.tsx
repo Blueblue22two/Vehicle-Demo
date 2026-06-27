@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockUseGLTF = vi.fn();
+const mockSetClearColor = vi.fn();
 
 vi.mock('@react-three/drei', () => ({
   useGLTF: (path: string) => mockUseGLTF(path),
@@ -13,9 +14,18 @@ vi.mock('@react-three/drei', () => ({
 }));
 
 vi.mock('@react-three/fiber', () => ({
-  Canvas: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="canvas">{children}</div>
-  ),
+  Canvas: ({
+    children,
+    onCreated,
+  }: {
+    children: React.ReactNode;
+    onCreated?: (state: {
+      gl: { setClearColor: typeof mockSetClearColor };
+    }) => void;
+  }) => {
+    onCreated?.({ gl: { setClearColor: mockSetClearColor } });
+    return <div data-testid="canvas">{children}</div>;
+  },
   useFrame: vi.fn(),
   useThree: () => ({
     camera: { position: { copy: vi.fn() }, lookAt: vi.fn() },
@@ -91,6 +101,7 @@ describe('SceneLoadingFallback', () => {
 describe('VehicleScene', () => {
   beforeEach(() => {
     mockUseGLTF.mockReset();
+    mockSetClearColor.mockReset();
   });
 
   it('renders the scene container', () => {
@@ -144,5 +155,16 @@ describe('VehicleScene', () => {
     render(<VehicleScene />);
 
     expect(screen.getByTestId('canvas')).toBeInTheDocument();
+  });
+
+  it('uses the same light gray background for the WebGL canvas and fallback', () => {
+    mockUseGLTF.mockReturnValue({ scene: createMockSceneWithWindows() });
+
+    render(<VehicleScene />);
+
+    expect(mockSetClearColor).toHaveBeenCalledWith('#e9ecef', 1);
+    expect(screen.getByTestId('scene-container')).toHaveStyle({
+      backgroundColor: '#e9ecef',
+    });
   });
 });

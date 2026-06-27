@@ -19,6 +19,7 @@ export interface VoiceControlProps {
 const STATE_LABELS: Record<SpeechState, string> = {
   idle: '点击麦克风开始语音控制',
   permission: '等待麦克风授权…',
+  preparing: '正在准备本地语音识别…',
   listening: '正在聆听…',
   success: '识别成功',
   error: '识别失败',
@@ -29,7 +30,7 @@ const ERROR_LABELS: Record<SpeechErrorType, string> = {
   denied: '麦克风权限被拒绝，请在浏览器设置中允许后重试',
   'no-speech': '未检测到语音，请重试',
   aborted: '识别已取消',
-  network: '网络连接失败，请重试',
+  network: '本地语音不可用，且在线识别连接失败；请检查网络或使用文本输入',
   timeout: '识别超时，请重试',
   'not-supported': '语音识别不可用',
 };
@@ -109,7 +110,11 @@ export function VoiceControl({ onFeedback }: VoiceControlProps) {
 
   // ---- Click handler ----
   const handleClick = useCallback(() => {
-    if (speechState === 'listening' || speechState === 'permission') {
+    if (
+      speechState === 'listening' ||
+      speechState === 'permission' ||
+      speechState === 'preparing'
+    ) {
       adapter.stop();
       setSpeechState('idle');
       setErrorType(null);
@@ -121,7 +126,10 @@ export function VoiceControl({ onFeedback }: VoiceControlProps) {
   // ---- Render helpers ----
 
   const isDisabled = speechState === 'unsupported' || errorType === 'denied';
-  const isActive = speechState === 'listening' || speechState === 'permission';
+  const isActive =
+    speechState === 'listening' ||
+    speechState === 'permission' ||
+    speechState === 'preparing';
 
   const statusText = (() => {
     if (speechState === 'error' && errorType) {

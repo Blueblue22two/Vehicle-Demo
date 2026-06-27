@@ -6,10 +6,14 @@ import type {
 } from './types';
 
 /** Browser-native SpeechRecognition constructor (standard or webkit-prefixed). */
-type SpeechRecognitionCtor = new () => SpeechRecognition;
+type SpeechRecognitionCtor = (new () => SpeechRecognition) & {
+  available?: SpeechRecognitionConstructor['available'];
+  install?: SpeechRecognitionConstructor['install'];
+};
 
 /** Milliseconds before a listening session times out with no result. */
 const NO_SPEECH_TIMEOUT_MS = 10_000;
+const RECOGNITION_LANGUAGE = 'zh-CN';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -68,6 +72,8 @@ export class BrowserSpeechAdapter implements SpeechAdapter {
   private listeners = new Set<(event: SpeechEvent) => void>();
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
   private ctor: SpeechRecognitionCtor | null;
+  /** Invalidates callbacks and asynchronous preparation from older sessions. */
+  private sessionId = 0;
 
   constructor() {
     this.ctor = resolveConstructor();
@@ -93,25 +99,97 @@ export class BrowserSpeechAdapter implements SpeechAdapter {
       return;
     }
 
-    // Guard against parallel sessions: stop any active recognition first.
+    // Guard against parallel sessions and invalidate callbacks from the old one.
+    this.clearTimeout();
     this.stopRecognition();
+    const sessionId = ++this.sessionId;
+    this.setState('permission');
+
+    // Older implementations do not expose the on-device capability API. Start
+    // synchronously to preserve their user-gesture permission behaviour.
+    if (!this.ctor.available) {
+      this.beginRecognition(sessionId, false);
+      return;
+    }
+
+    void this.prepareLocalRecognition(sessionId);
+  }
+
+  stop(): void {
+    ++this.sessionId;
+    this.clearTimeout();
+    this.stopRecognition();
+    if (this._supported) this.setState('idle');
+  }
+
+  subscribe(listener: (event: SpeechEvent) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  // ---- recognition lifecycle ----
+
+  private async prepareLocalRecognition(sessionId: number): Promise<void> {
+    const ctor = this.ctor;
+    if (!ctor?.available) return;
+
+    let processLocally = false;
+    try {
+      this.setStateIfCurrent(sessionId, 'preparing');
+      const availability = await ctor.available({
+        langs: [RECOGNITION_LANGUAGE],
+        processLocally: true,
+      });
+      if (!this.isCurrentSession(sessionId)) return;
+
+      if (availability === 'available') {
+        processLocally = true;
+      } else if (
+        (availability === 'downloadable' || availability === 'downloading') &&
+        ctor.install
+      ) {
+        processLocally = await ctor.install({
+          langs: [RECOGNITION_LANGUAGE],
+        });
+        if (!this.isCurrentSession(sessionId)) return;
+      }
+    } catch {
+      // Capability checks may be blocked by Permissions Policy. The legacy
+      // online recognizer remains a valid best-effort fallback.
+      processLocally = false;
+    }
+
+    if (!this.isCurrentSession(sessionId)) return;
+    this.setState('permission');
+    this.beginRecognition(sessionId, processLocally);
+  }
+
+  private beginRecognition(sessionId: number, processLocally: boolean): void {
+    if (!this.ctor || !this.isCurrentSession(sessionId)) return;
 
     const recognition = new this.ctor();
     this.recognition = recognition;
 
-    recognition.lang = 'zh-CN';
+    recognition.lang = RECOGNITION_LANGUAGE;
     recognition.continuous = false;
     recognition.interimResults = false;
+    if (processLocally) recognition.processLocally = true;
 
     recognition.onstart = () => {
+      if (!this.isCurrentRecognition(sessionId, recognition)) return;
       this.clearTimeout();
       this.setState('listening');
       this.emit({ type: 'start' });
 
       // Arm no-speech timeout once listening begins.
       this.timeoutId = setTimeout(() => {
-        if (this._state === 'listening') {
-          this.stop();
+        if (
+          this._state === 'listening' &&
+          this.isCurrentRecognition(sessionId, recognition)
+        ) {
+          this.stopRecognition();
           this.setState('error');
           this.emit({ type: 'error', error: 'timeout' });
         }
@@ -119,6 +197,7 @@ export class BrowserSpeechAdapter implements SpeechAdapter {
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      if (!this.isCurrentRecognition(sessionId, recognition)) return;
       this.clearTimeout();
       const last = event.results[event.results.length - 1];
       if (!last.isFinal) return;
@@ -135,6 +214,7 @@ export class BrowserSpeechAdapter implements SpeechAdapter {
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (!this.isCurrentRecognition(sessionId, recognition)) return;
       this.clearTimeout();
       const errorType = mapError(event.error);
       this.setState('error');
@@ -142,29 +222,20 @@ export class BrowserSpeechAdapter implements SpeechAdapter {
     };
 
     recognition.onend = () => {
+      if (!this.isCurrentRecognition(sessionId, recognition)) return;
       this.clearTimeout();
+      this.recognition = null;
       this.emit({ type: 'end' });
     };
 
-    this.setState('permission');
     try {
       recognition.start();
     } catch {
+      if (!this.isCurrentRecognition(sessionId, recognition)) return;
+      this.stopRecognition();
       this.setState('error');
       this.emit({ type: 'error', error: 'not-supported' });
     }
-  }
-
-  stop(): void {
-    this.clearTimeout();
-    this.stopRecognition();
-  }
-
-  subscribe(listener: (event: SpeechEvent) => void): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
   }
 
   // ---- internal helpers ----
@@ -178,6 +249,21 @@ export class BrowserSpeechAdapter implements SpeechAdapter {
     for (const listener of this.listeners) {
       listener(event);
     }
+  }
+
+  private isCurrentSession(sessionId: number): boolean {
+    return this.sessionId === sessionId;
+  }
+
+  private isCurrentRecognition(
+    sessionId: number,
+    recognition: SpeechRecognition,
+  ): boolean {
+    return this.isCurrentSession(sessionId) && this.recognition === recognition;
+  }
+
+  private setStateIfCurrent(sessionId: number, state: SpeechState): void {
+    if (this.isCurrentSession(sessionId)) this.setState(state);
   }
 
   private stopRecognition(): void {

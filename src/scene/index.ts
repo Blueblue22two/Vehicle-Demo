@@ -1,1 +1,10 @@
-export {};
+export { VehicleScene } from './VehicleScene';
+export { VehicleModel } from './VehicleModel';
+export { useWindowInteraction } from './WindowInteraction';
+export type { WindowInteractionAPI } from './WindowInteraction';
+export { SceneErrorBoundary } from './SceneErrorBoundary';
+export { SceneLoadingFallback } from './SceneLoadingFallback';
+export { useDragDetector, DRAG_THRESHOLD_PX } from './useDragDetector';
+export type { DragDetector } from './useDragDetector';
+export { WINDOW_NODE_CONFIGS, ANIMATION_DURATION_MS } from './windowConfig';
+export type { WindowNodeConfig } from './windowConfig';

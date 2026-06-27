@@ -14,6 +14,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: #080b10;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 button,
@@ -21,27 +26,272 @@ input {
   font: inherit;
 }
 
-.app-shell {
+/* ---- App layout ---- */
+
+.app-root {
   display: grid;
+  grid-template-rows: auto 1fr auto;
   min-height: 100vh;
+  position: relative;
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background: #0c1018;
+  border-bottom: 1px solid #1a2430;
+  z-index: 10;
+}
+
+.app-brand {
+  color: #62d9ff;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #bcc8d8;
+}
+
+.app-main {
+  position: relative;
+  min-height: 0;
+}
+
+.app-footer {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.75rem;
+  color: #4a5a6a;
+  text-align: center;
+  border-top: 1px solid #121820;
+}
+
+/* ---- 3D Scene container ---- */
+
+.scene-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: #080b10;
+}
+
+.scene-loading,
+.scene-error {
+  display: grid;
   place-content: center;
-  padding: 2rem;
+  place-items: center;
+  min-height: 60vh;
+  gap: 1rem;
+  color: #92a0b8;
   text-align: center;
 }
 
-.app-shell h1,
-.app-shell p {
+.scene-loading-text {
+  font-size: 1.125rem;
+}
+
+.scene-error-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f4a0a0;
   margin: 0;
 }
 
-.app-shell h1 {
-  margin-block: 0.5rem 0.75rem;
-  font-size: clamp(2rem, 5vw, 4rem);
+.scene-error-detail {
+  font-size: 0.875rem;
+  margin: 0;
+  max-width: 24rem;
 }
 
-.eyebrow {
-  color: #62d9ff;
-  font-size: 0.75rem;
-  letter-spacing: 0.2em;
+.scene-error-retry {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  border: 1px solid #3a4a5a;
+  border-radius: 6px;
+  background: #101820;
+  color: #d0d8e8;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.scene-error-retry:hover {
+  background: #1a2838;
+  border-color: #5a7a9a;
+}
+
+/* ---- Control panel ---- */
+
+.control-panel {
+  position: absolute;
+  bottom: 2.5rem;
+  right: 1rem;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(12, 16, 24, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid #1e2a38;
+  border-radius: 10px;
+  min-width: 260px;
+  max-width: 300px;
+}
+
+/* ---- Status panel ---- */
+
+.status-panel-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #5a7a9a;
+}
+
+.status-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.status-panel-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  background: #0c1018;
+  border-radius: 5px;
+  font-size: 0.8rem;
+}
+
+.status-panel-label {
+  color: #8898a8;
+}
+
+.window-status {
+  font-weight: 500;
+}
+
+.window-status--closed {
+  color: #5a6a7a;
+}
+
+.window-status--open {
+  color: #5ad89a;
+}
+
+.window-status--transitioning {
+  color: #62d9ff;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* ---- Text command ---- */
+
+.text-command {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.text-command-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #5a7a9a;
+}
+
+.text-command-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.text-command-input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  background: #0c1018;
+  border: 1px solid #1e2a38;
+  border-radius: 5px;
+  color: #d0d8e8;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.text-command-input:focus {
+  border-color: #3a6a8a;
+}
+
+.text-command-input::placeholder {
+  color: #3a4a5a;
+}
+
+.text-command-submit {
+  padding: 0.4rem 0.9rem;
+  background: #162838;
+  border: 1px solid #2a4a6a;
+  border-radius: 5px;
+  color: #b0d0e8;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.text-command-submit:hover {
+  background: #1e3850;
+  border-color: #3a6a9a;
+}
+
+/* ---- Feedback ---- */
+
+.feedback {
+  display: block;
+  padding: 0.4rem 0.6rem;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.feedback--success {
+  background: #0a2818;
+  color: #5ad89a;
+  border: 1px solid #1a4a2a;
+}
+
+.feedback--info {
+  background: #0a1a28;
+  color: #7ab8d8;
+  border: 1px solid #1a2a4a;
+}
+
+.feedback--warning {
+  background: #281a0a;
+  color: #d8a85a;
+  border: 1px solid #4a3a1a;
+}
+
+.feedback--error {
+  background: #280a10;
+  color: #f4a0a0;
+  border: 1px solid #4a1a2a;
 }

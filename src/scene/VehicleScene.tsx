@@ -1,15 +1,19 @@
 import { Suspense, useCallback, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ContactShadows } from '@react-three/drei';
+import { ContactShadows, OrbitControls } from '@react-three/drei';
 import { ACESFilmicToneMapping, SRGBColorSpace } from 'three';
 import { VehicleModel } from './VehicleModel';
 import { SceneErrorBoundary } from './SceneErrorBoundary';
 import { SceneLoadingFallback } from './SceneLoadingFallback';
+import { useDragDetector } from './useDragDetector';
 
 const CANVAS_STYLE: React.CSSProperties = {
   width: '100%',
   height: '100%',
 };
+
+const POLAR_MIN = (15 * Math.PI) / 180;
+const POLAR_MAX = (75 * Math.PI) / 180;
 
 function SceneLights() {
   return (
@@ -61,6 +65,20 @@ function SceneGround() {
   );
 }
 
+function CameraControls() {
+  return (
+    <OrbitControls
+      enableRotate
+      enablePan={false}
+      enableZoom
+      minPolarAngle={POLAR_MIN}
+      maxPolarAngle={POLAR_MAX}
+      minDistance={3}
+      maxDistance={12}
+    />
+  );
+}
+
 export function VehicleScene() {
   const [retryKey, setRetryKey] = useState(0);
 
@@ -68,8 +86,15 @@ export function VehicleScene() {
     setRetryKey((prev) => prev + 1);
   }, []);
 
+  const { isDragRef, onPointerDown, onPointerUp } = useDragDetector();
+
   return (
-    <div className="scene-container" data-testid="scene-container">
+    <div
+      className="scene-container"
+      data-testid="scene-container"
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+    >
       <SceneErrorBoundary key={retryKey} onRetry={handleRetry}>
         <Suspense fallback={<SceneLoadingFallback />}>
           <Canvas
@@ -89,7 +114,8 @@ export function VehicleScene() {
           >
             <SceneLights />
             <SceneGround />
-            <VehicleModel />
+            <VehicleModel isDragRef={isDragRef} />
+            <CameraControls />
           </Canvas>
         </Suspense>
       </SceneErrorBoundary>

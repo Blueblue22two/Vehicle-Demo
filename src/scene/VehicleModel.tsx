@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { Box3, Group, type Object3D, Vector3 } from 'three';
 import type { GLTF } from 'three-stdlib';
+import { useWindowInteraction } from './WindowInteraction';
 
 const MODEL_PATH = '/models/vehicle.glb';
 const TARGET_MAX_DIMENSION = 3.5;
@@ -16,7 +17,11 @@ function computeWorldBounds(root: Object3D): Box3 {
   return box;
 }
 
-export function VehicleModel() {
+export function VehicleModel({
+  isDragRef,
+}: {
+  isDragRef: React.MutableRefObject<boolean>;
+}) {
   const { scene } = useGLTF(MODEL_PATH) as GLTF;
 
   const { position, scale } = useMemo(() => {
@@ -37,7 +42,6 @@ export function VehicleModel() {
     };
   }, [scene]);
 
-  // Wrap in a Group to avoid mutating the cached scene's transform
   const group = useMemo(() => new Group(), []);
 
   useLayoutEffect(() => {
@@ -50,5 +54,7 @@ export function VehicleModel() {
     };
   }, [group, scene, position, scale]);
 
-  return <primitive object={group} />;
+  const windowEvents = useWindowInteraction(scene, isDragRef);
+
+  return <primitive object={group} {...windowEvents} />;
 }

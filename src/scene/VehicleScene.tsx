@@ -11,6 +11,7 @@ import { VehicleModel } from './VehicleModel';
 import { SceneErrorBoundary } from './SceneErrorBoundary';
 import { SceneLoadingFallback } from './SceneLoadingFallback';
 import { useDragDetector } from './useDragDetector';
+import { getPerformanceConfig } from './performanceConfig';
 
 const CANVAS_STYLE: React.CSSProperties = {
   width: '100%',
@@ -29,7 +30,13 @@ const RESET_LERP_SPEED = 4; // higher = faster smooth reset
 // Scene lights
 // ---------------------------------------------------------------------------
 
-function SceneLights() {
+function SceneLights({
+  shadowMapSize,
+  shadowsEnabled,
+}: {
+  shadowMapSize: number;
+  shadowsEnabled: boolean;
+}) {
   return (
     <>
       {/* Cool ambient fill */}
@@ -39,9 +46,9 @@ function SceneLights() {
         position={[8, 12, 6]}
         intensity={3.0}
         color="#fff8f0"
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        castShadow={shadowsEnabled}
+        shadow-mapSize-width={shadowMapSize}
+        shadow-mapSize-height={shadowMapSize}
         shadow-camera-near={0.5}
         shadow-camera-far={60}
         shadow-camera-left={-10}
@@ -67,24 +74,26 @@ function SceneLights() {
 // Scene ground
 // ---------------------------------------------------------------------------
 
-function SceneGround() {
+function SceneGround({ shadowsEnabled }: { shadowsEnabled: boolean }) {
   return (
     <>
       <mesh
-        receiveShadow
+        receiveShadow={shadowsEnabled}
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, -0.01, 0]}
       >
         <planeGeometry args={[20, 20]} />
-        <shadowMaterial transparent opacity={0.3} />
+        <shadowMaterial transparent opacity={shadowsEnabled ? 0.3 : 0} />
       </mesh>
-      <ContactShadows
-        position={[0, -0.01, 0]}
-        opacity={0.45}
-        scale={10}
-        blur={2.5}
-        far={8}
-      />
+      {shadowsEnabled && (
+        <ContactShadows
+          position={[0, -0.01, 0]}
+          opacity={0.45}
+          scale={10}
+          blur={2.5}
+          far={8}
+        />
+      )}
     </>
   );
 }
@@ -210,6 +219,8 @@ export function VehicleScene() {
   const [retryKey, setRetryKey] = useState(0);
   const [resetTrigger, setResetTrigger] = useState(0);
 
+  const perf = getPerformanceConfig();
+
   const handleRetry = useCallback(() => {
     setRetryKey((prev) => prev + 1);
   }, []);
@@ -231,7 +242,7 @@ export function VehicleScene() {
         <Suspense fallback={<SceneLoadingFallback />}>
           <Canvas
             style={CANVAS_STYLE}
-            dpr={[1, 1.5]}
+            dpr={[1, perf.maxDpr]}
             gl={{
               antialias: true,
               toneMapping: ACESFilmicToneMapping,
@@ -244,8 +255,11 @@ export function VehicleScene() {
               far: 50,
             }}
           >
-            <SceneLights />
-            <SceneGround />
+            <SceneLights
+              shadowMapSize={perf.shadowMapSize}
+              shadowsEnabled={perf.shadowsEnabled}
+            />
+            <SceneGround shadowsEnabled={perf.shadowsEnabled} />
             <VehicleModel isDragRef={isDragRef} />
             <CameraController resetTrigger={resetTrigger} />
           </Canvas>

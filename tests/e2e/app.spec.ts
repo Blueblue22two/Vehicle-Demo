@@ -465,9 +465,7 @@ test.describe('loading progress', () => {
     // Progress bar should be visible during loading (or the scene loads)
     // If the model loads fast, we at least see the canvas
     await expect(
-      page.locator(
-        '[data-testid="canvas"], [data-testid="scene-loading"]',
-      ),
+      page.locator('[data-testid="canvas"], [data-testid="scene-loading"]'),
     ).toBeVisible({ timeout: 10000 });
   });
 });

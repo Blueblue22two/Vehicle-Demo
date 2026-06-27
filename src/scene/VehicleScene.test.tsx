@@ -6,9 +6,10 @@ const mockUseGLTF = vi.fn();
 
 vi.mock('@react-three/drei', () => ({
   useGLTF: (path: string) => mockUseGLTF(path),
-  useProgress: () => ({ progress: 100, active: false }),
+  useProgress: () => ({ progress: 0, active: false }),
   ContactShadows: () => null,
   OrbitControls: () => null,
+  Html: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('@react-three/fiber', () => ({
@@ -17,7 +18,7 @@ vi.mock('@react-three/fiber', () => ({
   ),
   useFrame: vi.fn(),
   useThree: () => ({
-    camera: { position: { copy: vi.fn(), lerpVectors: vi.fn() } },
+    camera: { position: { copy: vi.fn() }, lookAt: vi.fn() },
   }),
 }));
 
@@ -76,11 +77,14 @@ describe('SceneErrorBoundary', () => {
 });
 
 describe('SceneLoadingFallback', () => {
-  it('renders loading status', () => {
+  it('renders loading status with progress element', () => {
     render(<SceneLoadingFallback />);
 
     expect(screen.getByTestId('scene-loading')).toBeInTheDocument();
-    expect(screen.getByText(/正在加载 3D 车辆/).textContent).toBeTruthy();
+    expect(
+      screen.getByText(/正在准备场景|正在加载 3D 车辆/).textContent,
+    ).toBeTruthy();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 });
 

@@ -24,11 +24,13 @@ function getProps(): OrbitControlsProps {
 
 vi.mock('@react-three/drei', () => ({
   useGLTF: () => ({ scene: createMockSceneWithWindows() }),
+  useProgress: () => ({ progress: 0, active: false }),
   ContactShadows: () => null,
   OrbitControls: (props: OrbitControlsProps) => {
     capturedOrbitProps = props;
     return null;
   },
+  Html: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('@react-three/fiber', () => ({
@@ -37,7 +39,7 @@ vi.mock('@react-three/fiber', () => ({
   ),
   useFrame: vi.fn(),
   useThree: () => ({
-    camera: { position: { copy: vi.fn(), lerpVectors: vi.fn() } },
+    camera: { position: { copy: vi.fn() }, lookAt: vi.fn() },
   }),
 }));
 

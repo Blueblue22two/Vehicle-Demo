@@ -33,8 +33,8 @@ interface ActiveAnimation {
 const EASE_IN_OUT_CUBIC = (t: number): number =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-const HOVER_EMISSIVE = '#3388aa';
-const HOVER_INTENSITY = 0.55;
+const HOVER_EMISSIVE = '#225577';
+const HOVER_INTENSITY = 0.45;
 
 function isMeshLike(child: Object3D): child is Object3D & MeshLike {
   return (child as Object3D & { isMesh?: boolean }).isMesh === true;

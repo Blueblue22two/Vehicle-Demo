@@ -2,6 +2,7 @@ export { VehicleScene } from './VehicleScene';
 export { VehicleModel } from './VehicleModel';
 export { useWindowInteraction } from './WindowInteraction';
 export type { WindowInteractionAPI } from './WindowInteraction';
+export { ResetCamera } from './ResetCamera';
 export { SceneErrorBoundary } from './SceneErrorBoundary';
 export { SceneLoadingFallback } from './SceneLoadingFallback';
 export { useDragDetector, DRAG_THRESHOLD_PX } from './useDragDetector';

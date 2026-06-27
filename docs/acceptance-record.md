@@ -32,14 +32,14 @@
 
 - **自动化通过**: 16/16 AC 均有自动化测试覆盖
 - **人工待验收**: 10 项（M-01 ~ M-10），详见 `memory_bank/ac-traceability.md`
-- **E2E 测试**: 36 个，全部通过
-- **单元/组件/集成测试**: 194 个，全部通过
+- **E2E 测试**: 33 个，全部通过
+- **单元/组件/集成测试**: 194 个（15 测试文件），全部通过
 
 ## 性能验收
 
 | 指标 | 目标 | 实际 | 状态 |
 | --- | --- | --- | --- |
-| 3D 资源体积 | ≤15 MB | ≈12 MB (模型 11MB + JS 327KB gzip) | ✅ |
+| 3D 资源体积 | ≤15 MB | ≈12 MB (模型 11.8MB + JS 330KB gzip) | ✅ |
 | 首次可交互 | <5 秒 | ≈1-2s（localhost，M 系列芯片） | ✅ |
 | 稳定帧率 | ≥45 FPS | ≈60 FPS（M 系列芯片） | ✅ |
 | 1280×720 视口 | 无横向滚动/遮挡 | E2E 12 视口测试通过 | ✅ |
@@ -68,7 +68,7 @@ $ npm run validate:model
 PASS: All 4 window nodes present
 
 $ npm run test:e2e
-PASS: 36 tests (28.9s)
+PASS: 33 tests (27.3s)
 ```
 
 ## 交付清单
@@ -82,7 +82,7 @@ PASS: 36 tests (28.9s)
 | 验收记录 | `docs/acceptance-record.md`（本文档） | ✅ |
 | 资产合规记录 | `README.md` §资产合规 + `scripts/validate-model.mjs` | ✅ |
 | Web 源码 | `src/`（React + TypeScript + Vite） | ✅ |
-| 3D 车模 | `public/models/vehicle.glb`（CC0，Kenney Car Kit） | ✅ |
+| 3D 车模 | `public/models/vehicle.glb`（CC BY 4.0，Khronos CarConcept，已适配） | ✅ |
 | 生产构建产物 | `dist/` | ✅ |
 
 ## 签名

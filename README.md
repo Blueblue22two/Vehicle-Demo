@@ -56,7 +56,7 @@ npm run typecheck    # 仅 TypeScript 类型检查
 npm run lint         # ESLint 静态检查
 npm run format:check # Prettier 格式检查
 npm run test         # Vitest 单元/组件/集成测试（194 测试）
-npm run test:e2e     # Playwright E2E 浏览器测试（36 测试）
+npm run test:e2e     # Playwright E2E 浏览器测试（33 测试）
 npm run validate:model # 校验车模资产（节点、包围盒、许可证）
 npm run check        # 全量质量门禁（typecheck + lint + format + test + build）
 ```
@@ -103,13 +103,13 @@ scripts/                   # 模型校验脚本
 
 ## 资产合规
 
-| 资产               | 来源                                                            | 许可证                                                        | 说明                               |
-| ------------------ | --------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------- |
-| 车模 `vehicle.glb` | [Kenney • Car Kit](https://kenney.nl/assets/car-kit) (modified) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | 拆分四窗节点、调整坐标轴、优化材质 |
-| 系统字体           | 操作系统内置                                                    | 各系统自带许可证                                              | Inter / 系统无衬线字体             |
-| SVG 图标           | 手写（reset 旋转箭头）                                          | 项目自有                                                      | 无第三方图标库依赖                 |
+| 资产               | 来源                                                                                                           | 许可证                                                    | 说明                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------- |
+| 车模 `vehicle.glb` | [Khronos CarConcept](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept) (adapted) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 拆分后侧窗为左右独立 Mesh、重命名四窗节点、保留 PBR 材质 |
+| 系统字体           | 操作系统内置                                                                                                   | 各系统自带许可证                                          | Inter / 系统无衬线字体                                   |
+| Emoji 图标         | 操作系统内置（🎤）                                                                                             | 各系统自带                                                | 无第三方图标库依赖                                       |
 
-> 所有运行时资产均随项目本地打包，不依赖外部 CDN。车模原始资产来自 Kenney Car Kit（CC0 公共领域），经 Blender 修改（节点拆分、材质调优、glTF 导出优化）后用于本项目。
+> 所有运行时资产均随项目本地打包，不依赖外部 CDN。车模原始资产来自 KhronosGroup glTF Sample Assets 的 CarConcept（Eric Chadwick / Darmstadt Graphics Group GmbH，CC BY 4.0），经 `scripts/adapt-vehicle-model.mjs` 可复现适配（前窗重命名、后窗拆分、适配元数据记录）。任何演示或再分发必须保留 CC BY 4.0 归属声明。详见 `public/models/README.md`。
 
 ## 技术栈
 
@@ -126,8 +126,8 @@ scripts/                   # 模型校验脚本
 
 ```bash
 # 运行全部自动化测试
-npm run test        # 194 单元/组件/集成测试
-npm run test:e2e    # 36 浏览器端到端测试
+npm run test        # 194 单元/组件/集成测试（15 个测试文件）
+npm run test:e2e    # 33 浏览器端到端测试
 
 # 运行特定测试
 npm run test -- src/domain/vehicle
@@ -156,4 +156,4 @@ npm ci && npm run build
 
 ## 许可证
 
-本项目源码基于 MIT 许可证。3D 车模资产基于 CC0 1.0（来源：Kenney Car Kit，已修改）。
+本项目源码基于 MIT 许可证。3D 车模资产基于 CC BY 4.0（来源：Khronos CarConcept by Eric Chadwick / Darmstadt Graphics Group GmbH，已适配）。

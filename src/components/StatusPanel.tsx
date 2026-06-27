@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useVehicleStore } from '../domain/vehicle';
 import type { WindowId, WindowState } from '../domain/vehicle';
 
@@ -25,7 +26,7 @@ function statusClass(state: WindowState): string {
   return `window-status window-status--${state}`;
 }
 
-export function StatusPanel() {
+export const StatusPanel = memo(function StatusPanel() {
   const windows = useVehicleStore((s) => s.windows);
 
   return (
@@ -46,4 +47,4 @@ export function StatusPanel() {
       </ul>
     </section>
   );
-}
+});

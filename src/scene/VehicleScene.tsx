@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import { ACESFilmicToneMapping, SRGBColorSpace } from 'three';
@@ -7,6 +7,7 @@ import { SceneErrorBoundary } from './SceneErrorBoundary';
 import { SceneLoadingFallback } from './SceneLoadingFallback';
 import { ResetCamera } from './ResetCamera';
 import { useDragDetector } from './useDragDetector';
+import { getPerformanceConfig } from './performanceConfig';
 
 const CANVAS_STYLE: React.CSSProperties = {
   width: '100%',
@@ -16,13 +17,16 @@ const CANVAS_STYLE: React.CSSProperties = {
 const POLAR_MIN = (15 * Math.PI) / 180;
 const POLAR_MAX = (75 * Math.PI) / 180;
 
+interface SceneLightsProps {
+  shadowMapSize: number;
+  shadowsEnabled: boolean;
+}
+
 /**
- * Three-light setup for studio-style cockpit illumination:
- * - Soft cool ambient fill
- * - Warm-white key light with 2048×2048 shadow map
- * - Cool blue rim light for body edge definition
+ * Three-light setup for studio-style cockpit illumination.
+ * Shadow quality adapts to the detected performance tier.
  */
-function SceneLights() {
+function SceneLights({ shadowMapSize, shadowsEnabled }: SceneLightsProps) {
   return (
     <>
       <ambientLight intensity={0.5} color="#aaccff" />
@@ -30,9 +34,9 @@ function SceneLights() {
         position={[10, 14, 8]}
         intensity={3.0}
         color="#fff8f0"
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        castShadow={shadowsEnabled}
+        shadow-mapSize-width={shadowMapSize}
+        shadow-mapSize-height={shadowMapSize}
         shadow-camera-near={0.5}
         shadow-camera-far={60}
         shadow-camera-left={-10}
@@ -43,27 +47,29 @@ function SceneLights() {
       />
       <directionalLight
         position={[-5, 4, -6]}
-        intensity={1.0}
+        intensity={shadowsEnabled ? 1.0 : 1.2}
         color="#8899cc"
       />
     </>
   );
 }
 
-function SceneGround() {
+function SceneGround({ shadowsEnabled }: { shadowsEnabled: boolean }) {
   return (
     <>
-      <mesh
-        receiveShadow
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.01, 0]}
-      >
-        <planeGeometry args={[20, 20]} />
-        <shadowMaterial transparent opacity={0.3} />
-      </mesh>
+      {shadowsEnabled && (
+        <mesh
+          receiveShadow
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, -0.01, 0]}
+        >
+          <planeGeometry args={[20, 20]} />
+          <shadowMaterial transparent opacity={0.3} />
+        </mesh>
+      )}
       <ContactShadows
         position={[0, -0.01, 0]}
-        opacity={0.5}
+        opacity={shadowsEnabled ? 0.5 : 0.3}
         scale={12}
         blur={2.5}
         far={10}
@@ -96,6 +102,8 @@ export function VehicleScene() {
 
   const { isDragRef, onPointerDown, onPointerUp } = useDragDetector();
 
+  const perf = useMemo(() => getPerformanceConfig(), []);
+
   return (
     <div
       className="scene-container"
@@ -107,7 +115,7 @@ export function VehicleScene() {
         <Suspense fallback={<SceneLoadingFallback />}>
           <Canvas
             style={CANVAS_STYLE}
-            dpr={[1, 1.5]}
+            dpr={[1, perf.maxDpr]}
             gl={{
               antialias: true,
               toneMapping: ACESFilmicToneMapping,
@@ -120,8 +128,11 @@ export function VehicleScene() {
               far: 50,
             }}
           >
-            <SceneLights />
-            <SceneGround />
+            <SceneLights
+              shadowMapSize={perf.shadowMapSize}
+              shadowsEnabled={perf.shadowsEnabled}
+            />
+            <SceneGround shadowsEnabled={perf.shadowsEnabled} />
             <VehicleModel isDragRef={isDragRef} />
             <CameraControls />
             <ResetCamera />

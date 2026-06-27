@@ -95,6 +95,22 @@ input {
 
 .scene-loading-text {
   font-size: 1.125rem;
+  margin: 0;
+}
+
+.scene-loading-bar {
+  width: 14rem;
+  height: 4px;
+  background: #1a2430;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.scene-loading-bar-fill {
+  height: 100%;
+  background: #62d9ff;
+  border-radius: 2px;
+  transition: width 0.3s ease;
 }
 
 .scene-error-title {
@@ -124,6 +140,40 @@ input {
 .scene-error-retry:hover {
   background: #1a2838;
   border-color: #5a7a9a;
+}
+
+/* ---- Reset view button ---- */
+
+.scene-reset-button {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(12, 16, 24, 0.8);
+  backdrop-filter: blur(6px);
+  border: 1px solid #1e2a38;
+  border-radius: 6px;
+  color: #8898a8;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.scene-reset-button:hover {
+  background: rgba(22, 40, 56, 0.85);
+  border-color: #3a6a8a;
+  color: #bcc8d8;
+}
+
+.scene-reset-button svg {
+  flex-shrink: 0;
 }
 
 /* ---- Control panel ---- */

@@ -6,6 +6,7 @@ const mockUseGLTF = vi.fn();
 
 vi.mock('@react-three/drei', () => ({
   useGLTF: (path: string) => mockUseGLTF(path),
+  useProgress: () => ({ progress: 100, active: false }),
   ContactShadows: () => null,
   OrbitControls: () => null,
 }));
@@ -15,6 +16,9 @@ vi.mock('@react-three/fiber', () => ({
     <div data-testid="canvas">{children}</div>
   ),
   useFrame: vi.fn(),
+  useThree: () => ({
+    camera: { position: { copy: vi.fn(), lerpVectors: vi.fn() } },
+  }),
 }));
 
 import { VehicleScene } from './VehicleScene';

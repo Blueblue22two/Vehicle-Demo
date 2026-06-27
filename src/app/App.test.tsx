@@ -57,4 +57,11 @@ describe('App', () => {
 
     expect(screen.getByText(/拖动旋转/)).toBeInTheDocument();
   });
+
+  it('renders the voice control button', () => {
+    render(<App />);
+
+    expect(screen.getByTestId('voice-button')).toBeInTheDocument();
+    expect(screen.getByTestId('voice-status')).toBeInTheDocument();
+  });
 });

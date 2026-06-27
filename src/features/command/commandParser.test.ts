@@ -116,4 +116,28 @@ describe('parseVehicleCommand', () => {
     expect(useVehicleStore.getState().windows).toEqual(before);
     expect(useVehicleStore.getState().lastCommandResult).toBeNull();
   });
+
+  it('rejects commands with extraneous content after valid tokens', () => {
+    expect(parseVehicleCommand('打开左前窗吧', 'text')).toEqual({
+      ok: false,
+      reason: 'unsupported',
+    });
+    expect(parseVehicleCommand('关闭全部车窗谢谢', 'voice')).toEqual({
+      ok: false,
+      reason: 'unsupported',
+    });
+  });
+
+  it('preserves source attribution in parsed commands', () => {
+    const voiceResult = parseVehicleCommand('打开左前窗', 'voice');
+    expect(voiceResult.ok && voiceResult.command.source).toBe('voice');
+
+    const textResult = parseVehicleCommand('关闭全部车窗', 'text');
+    expect(textResult.ok && textResult.command.source).toBe('text');
+  });
+
+  it('normalizes text and returns it in the result', () => {
+    const result = parseVehicleCommand('请把左前窗打开', 'text');
+    expect(result.ok && result.normalizedText).toBe('左前窗打开');
+  });
 });

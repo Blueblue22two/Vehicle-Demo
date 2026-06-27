@@ -262,6 +262,78 @@ input {
   border-color: #3a6a9a;
 }
 
+/* ---- Voice control ---- */
+
+.voice-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.voice-control-button {
+  display: grid;
+  place-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: #0c1018;
+  border: 1px solid #1e2a38;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.voice-control-button:hover:not(:disabled) {
+  background: #162838;
+  border-color: #3a6a8a;
+}
+
+.voice-control-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voice-control-button--active {
+  background: #162838;
+  border-color: #62d9ff;
+  box-shadow: 0 0 8px rgba(98, 217, 255, 0.35);
+}
+
+.voice-control-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.voice-control-icon--pulse {
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
+}
+
+.voice-control-status {
+  font-size: 0.75rem;
+  color: #5a7a9a;
+  line-height: 1.35;
+}
+
+.voice-control-status--error {
+  color: #f4a0a0;
+}
+
 /* ---- Feedback ---- */
 
 .feedback {

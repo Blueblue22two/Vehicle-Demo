@@ -56,7 +56,6 @@ export function FeedbackDisplay({ feedback }: FeedbackDisplayProps) {
       return;
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(true);
 
     const delay =

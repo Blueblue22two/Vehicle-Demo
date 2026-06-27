@@ -47,16 +47,16 @@ Text input   ─┘                                                    │
 
 **Directory boundaries (`src/`):**
 
-| Directory | Responsibility |
-|---|---|
-| `app/` | Entry point (`main.tsx`), page shell (`App`), global styles |
-| `domain/vehicle/` | Types (`types.ts`), state machine + command executor (`vehicleStore.ts`). **Single source of truth** — all state changes go through `executeCommand()` |
-| `features/command/` | Chinese text normalization and `parseVehicleCommand()` — a pure function, no DOM/store access |
-| `features/voice/` | `SpeechRecognition` adapter (planned, not yet implemented) |
-| `scene/` | React Three Fiber Canvas, 3D model loading, lights, camera, window animations |
-| `components/` | Status panel, text input, feedback UI |
-| `test/` | Test setup (jsdom + jest-dom matchers) |
-| `types/` | Browser API type augmentations |
+| Directory           | Responsibility                                                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `app/`              | Entry point (`main.tsx`), page shell (`App`), global styles                                                                                            |
+| `domain/vehicle/`   | Types (`types.ts`), state machine + command executor (`vehicleStore.ts`). **Single source of truth** — all state changes go through `executeCommand()` |
+| `features/command/` | Chinese text normalization and `parseVehicleCommand()` — a pure function, no DOM/store access                                                          |
+| `features/voice/`   | `SpeechRecognition` adapter (planned, not yet implemented)                                                                                             |
+| `scene/`            | React Three Fiber Canvas, 3D model loading, lights, camera, window animations                                                                          |
+| `components/`       | Status panel, text input, feedback UI                                                                                                                  |
+| `test/`             | Test setup (jsdom + jest-dom matchers)                                                                                                                 |
+| `types/`            | Browser API type augmentations                                                                                                                         |
 
 **Core types** (from `src/domain/vehicle/types.ts`):
 
@@ -66,6 +66,7 @@ Text input   ─┘                                                    │
 - `CommandExecutionResult`: `{ command, status, started, skipped, alreadySatisfied }`
 
 **State machine rules** (from `vehicleStore.ts`):
+
 - All windows start `closed`
 - A window in `transitioning` rejects new commands for itself (returns `blocked`)
 - `allWindows` commands skip `transitioning` windows and return `partial` when some are skipped
@@ -73,7 +74,7 @@ Text input   ─┘                                                    │
 - Failed animations roll back via `failWindowTransition()` to the previous stable state
 - The store never holds Three.js objects — only domain state
 
-## Task Workflow (for implementing NC-* tasks)
+## Task Workflow (for implementing NC-\* tasks)
 
 The project has a defined stage workflow in `memory_bank/stage_workflow.md`. Key points:
 

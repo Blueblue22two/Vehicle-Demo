@@ -1,5 +1,7 @@
 # NeoCabin 3D 智舱车控 Demo
 
+> 当前发布版本：V1.0（Git 标签 `v1.0.0`）
+
 桌面端 Web 3D 智能座舱车窗控制演示。通过可旋转、可点击、可语音控制的 3D 新能源车模型，演示直观且一致的车窗控制体验。
 
 ![技术栈](https://img.shields.io/badge/React-19-61dafb?logo=react) ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript) ![Three.js](https://img.shields.io/badge/Three.js-0.185-000000?logo=three.js) ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite)

@@ -32,10 +32,10 @@ interface SceneLightsProps {
 function SceneLights({ shadowMapSize, shadowsEnabled }: SceneLightsProps) {
   return (
     <>
-      <ambientLight intensity={0.5} color="#aaccff" />
+      <ambientLight intensity={0.65} color="#aaccff" />
       <directionalLight
         position={[10, 14, 8]}
-        intensity={3.0}
+        intensity={3.3}
         color="#fff8f0"
         castShadow={shadowsEnabled}
         shadow-mapSize-width={shadowMapSize}
@@ -50,7 +50,7 @@ function SceneLights({ shadowMapSize, shadowsEnabled }: SceneLightsProps) {
       />
       <directionalLight
         position={[-5, 4, -6]}
-        intensity={shadowsEnabled ? 1.0 : 1.2}
+        intensity={shadowsEnabled ? 1.15 : 1.35}
         color="#8899cc"
       />
     </>
@@ -60,18 +60,16 @@ function SceneLights({ shadowMapSize, shadowsEnabled }: SceneLightsProps) {
 function SceneGround({ shadowsEnabled }: { shadowsEnabled: boolean }) {
   return (
     <>
-      {shadowsEnabled && (
-        <mesh
-          receiveShadow
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, -0.01, 0]}
-        >
-          <planeGeometry args={[20, 20]} />
-          <shadowMaterial transparent opacity={0.3} />
-        </mesh>
-      )}
+      <mesh
+        receiveShadow={shadowsEnabled}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.02, 0]}
+      >
+        <planeGeometry args={[20, 20]} />
+        <meshStandardMaterial color="#d9dde1" roughness={0.92} metalness={0} />
+      </mesh>
       <ContactShadows
-        position={[0, -0.01, 0]}
+        position={[0, -0.015, 0]}
         opacity={shadowsEnabled ? 0.5 : 0.3}
         scale={12}
         blur={2.5}

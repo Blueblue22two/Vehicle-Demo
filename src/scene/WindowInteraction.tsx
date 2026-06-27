@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Object3D } from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
-import type { WindowId, WindowStableState } from '../domain/vehicle';
+import type { WindowId } from '../domain/vehicle';
 import { useVehicleStore } from '../domain/vehicle';
 import { WINDOW_NODE_CONFIGS, ANIMATION_DURATION_MS } from './windowConfig';
 import type { WindowNodeConfig } from './windowConfig';
@@ -47,10 +47,6 @@ function findFirstMesh(node: Object3D): MeshLike | null {
     if (found) return found;
   }
   return null;
-}
-
-function resolveTarget(current: WindowStableState): WindowStableState {
-  return current === 'open' ? 'closed' : 'open';
 }
 
 function applyHover(mesh: MeshLike) {
@@ -114,11 +110,15 @@ export function useWindowInteraction(
   const animatingRef = useRef<Map<WindowId, ActiveAnimation>>(new Map());
   const hoveredRef = useRef<Set<WindowId>>(new Set());
   const initializedRef = useRef(false);
+  const transitions = useVehicleStore((state) => state.transitions);
+  const windowStates = useVehicleStore((state) => state.windows);
 
   // --- Registry: discover window meshes once after scene is available ---
   useEffect(() => {
     if (initializedRef.current) return;
     const map = new Map<WindowId, WindowEntry>();
+    const activeAnimations = animatingRef.current;
+    const hoveredWindows = hoveredRef.current;
 
     for (const config of WINDOW_NODE_CONFIGS) {
       const node = sceneRoot.getObjectByName(config.nodeName);
@@ -171,7 +171,6 @@ export function useWindowInteraction(
 
     return () => {
       const store = useVehicleStore.getState();
-      const activeAnimations = animatingRef.current;
       for (const [windowId] of activeAnimations) {
         store.failWindowTransition(windowId);
       }
@@ -180,10 +179,54 @@ export function useWindowInteraction(
       for (const [, entry] of map) {
         clearHover(entry.mesh);
       }
-      hoveredRef.current.clear();
+      hoveredWindows.clear();
       initializedRef.current = false;
     };
   }, [sceneRoot]);
+
+  // --- Transition consumer: every input source uses the same animation path ---
+  useEffect(() => {
+    const activeAnimations = animatingRef.current;
+
+    // A reset, failure, or another lifecycle event may remove a transition
+    // before its animation finishes. Cancel it and restore the stable pose.
+    for (const [windowId] of activeAnimations) {
+      if (transitions[windowId]) continue;
+
+      activeAnimations.delete(windowId);
+      const entry = windowsRef.current.get(windowId);
+      const stableState = windowStates[windowId];
+      if (entry && stableState !== 'transitioning') {
+        entry.mesh.position.y =
+          stableState === 'open'
+            ? entry.initialY + entry.config.openOffset
+            : entry.initialY;
+      }
+    }
+
+    for (const config of WINDOW_NODE_CONFIGS) {
+      const windowId = config.windowId;
+      const transition = transitions[windowId];
+      if (!transition || activeAnimations.has(windowId)) continue;
+
+      const entry = windowsRef.current.get(windowId);
+      if (!entry) {
+        // Never leave a command permanently transitioning when its model node
+        // cannot be animated.
+        useVehicleStore.getState().failWindowTransition(windowId);
+        continue;
+      }
+
+      activeAnimations.set(windowId, {
+        startY: entry.mesh.position.y,
+        targetY:
+          transition.target === 'open'
+            ? entry.initialY + entry.config.openOffset
+            : entry.initialY,
+        elapsed: 0,
+      });
+    }
+  }, [transitions, windowStates]);
 
   // --- Pointer events: hover ---
   const handlePointerEnter = useCallback((e: ThreeEvent<PointerEvent>) => {
@@ -221,42 +264,20 @@ export function useWindowInteraction(
 
       if (isDragRef.current) return;
 
-      const entry = windowsRef.current.get(windowId);
-      if (!entry) return;
-
       const store = useVehicleStore.getState();
       const current = store.windows[windowId];
       if (current === 'transitioning') return;
 
-      const result = store.executeCommand({
+      store.executeCommand({
         source: 'pointer',
         target: windowId,
         action: 'toggle',
       });
-
-      if (
-        result.status === 'accepted' ||
-        (result.status === 'partial' && result.started.includes(windowId))
-      ) {
-        const target = resolveTarget(current);
-        const startY = entry.mesh.position.y;
-        const targetY =
-          target === 'open'
-            ? entry.initialY + entry.config.openOffset
-            : entry.initialY;
-
-        animatingRef.current.set(windowId, {
-          startY,
-          targetY,
-          elapsed: 0,
-        });
-      }
     },
     [isDragRef],
   );
 
   // --- Animation driver ---
-  // eslint-disable-next-line react-hooks/immutability -- useFrame intentionally mutates ref state for rAF-driven animation
   useFrame((_, delta) => {
     const animating = animatingRef.current;
     if (animating.size === 0) return;

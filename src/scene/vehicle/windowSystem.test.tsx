@@ -1,13 +1,23 @@
+import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MutableRefObject } from 'react';
+import type { Object3D } from 'three';
 import { useVehicleStore } from '../../domain/vehicle';
+import { useWindowInteraction } from '../WindowInteraction';
 import { WINDOW_NODE_CONFIGS, ANIMATION_DURATION_MS } from '../windowConfig';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
+const frameCallbacks = vi.hoisted(
+  () => [] as Array<(state: unknown, delta: number) => void>,
+);
+
 vi.mock('@react-three/fiber', () => ({
-  useFrame: vi.fn(),
+  useFrame: vi.fn((callback: (state: unknown, delta: number) => void) => {
+    frameCallbacks.push(callback);
+  }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -18,6 +28,8 @@ interface MockMesh {
   isMesh: true;
   name: string;
   position: { y: number };
+  children: MockMesh[];
+  parent: MockNode | null;
   material: {
     emissive: { set: ReturnType<typeof vi.fn> };
     emissiveIntensity: number;
@@ -26,6 +38,8 @@ interface MockMesh {
 
 interface MockNode {
   name: string;
+  children: MockMesh[];
+  parent: null;
   traverse: (fn: (child: MockMesh) => void) => void;
 }
 
@@ -34,6 +48,8 @@ function createMockMesh(name: string): MockMesh {
     isMesh: true,
     name,
     position: { y: 0.5 },
+    children: [],
+    parent: null,
     material: {
       emissive: { set: vi.fn() },
       emissiveIntensity: 0,
@@ -48,10 +64,14 @@ function createWindowScene() {
   for (const config of WINDOW_NODE_CONFIGS) {
     const mesh = createMockMesh(`${config.nodeName}_mesh`);
     meshes[config.nodeName] = mesh;
-    nodes[config.nodeName] = {
+    const node: MockNode = {
       name: config.nodeName,
+      children: [mesh],
+      parent: null,
       traverse: (fn: (child: MockMesh) => void) => fn(mesh),
     };
+    mesh.parent = node;
+    nodes[config.nodeName] = node;
   }
 
   return {
@@ -62,11 +82,28 @@ function createWindowScene() {
   };
 }
 
+function mountInteraction(root = createWindowScene()) {
+  const dragRef: MutableRefObject<boolean> = { current: false };
+  const hook = renderHook(() =>
+    useWindowInteraction(root as unknown as Object3D, dragRef),
+  );
+
+  expect(frameCallbacks).toHaveLength(1);
+  return { ...hook, root, dragRef, frame: frameCallbacks[0] };
+}
+
+function runAnimation(frame: (state: unknown, delta: number) => void) {
+  act(() => {
+    frame({}, ANIMATION_DURATION_MS / 1000);
+  });
+}
+
 /** Shorthand for fresh store state. */
 const s = () => useVehicleStore.getState();
 
 function resetStore() {
   s().resetVehicleState();
+  frameCallbacks.length = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -312,5 +349,167 @@ describe('WindowInteraction animation state', () => {
     expect(state.windows.frontRight).toBe('closed');
     expect(state.lastCommandResult).toBeNull();
     expect(state.completeWindowTransition('frontLeft')).toBe(false);
+  });
+});
+
+describe('useWindowInteraction unified command animation', () => {
+  beforeEach(() => {
+    resetStore();
+  });
+
+  it.each(['voice', 'text'] as const)(
+    'animates and completes a single-window %s command',
+    (source) => {
+      const { root, frame, unmount } = mountInteraction();
+      const mesh = root._meshes.window_front_left;
+
+      act(() => {
+        const result = s().executeCommand({
+          source,
+          target: 'frontLeft',
+          action: 'open',
+        });
+        expect(result.status).toBe('accepted');
+      });
+
+      act(() => {
+        frame({}, ANIMATION_DURATION_MS / 2000);
+      });
+      expect(mesh.position.y).toBeLessThan(0.5);
+      expect(s().windows.frontLeft).toBe('transitioning');
+
+      act(() => {
+        frame({}, ANIMATION_DURATION_MS / 2000);
+      });
+      expect(mesh.position.y).toBe(0.5 + WINDOW_NODE_CONFIGS[0].openOffset);
+      expect(s().windows.frontLeft).toBe('open');
+      unmount();
+    },
+  );
+
+  it('animates and completes all windows from one voice command', () => {
+    const { root, frame, unmount } = mountInteraction();
+
+    act(() => {
+      s().executeCommand({
+        source: 'voice',
+        target: 'allWindows',
+        action: 'open',
+      });
+    });
+    runAnimation(frame);
+
+    for (const config of WINDOW_NODE_CONFIGS) {
+      expect(s().windows[config.windowId]).toBe('open');
+      expect(root._meshes[config.nodeName].position.y).toBe(
+        0.5 + config.openOffset,
+      );
+    }
+    unmount();
+  });
+
+  it('routes pointer commands through the same store-driven animation', () => {
+    const { result, root, frame, unmount } = mountInteraction();
+
+    act(() => {
+      result.current.onClick({
+        object: root._meshes.window_front_left,
+      } as never);
+    });
+    expect(s().lastCommandResult?.command.source).toBe('pointer');
+    expect(s().windows.frontLeft).toBe('transitioning');
+
+    runAnimation(frame);
+    expect(s().windows.frontLeft).toBe('open');
+    unmount();
+  });
+
+  it('does not restart an active animation on unrelated store updates', () => {
+    const { frame, unmount } = mountInteraction();
+
+    act(() => {
+      s().executeCommand({
+        source: 'voice',
+        target: 'frontLeft',
+        action: 'open',
+      });
+    });
+    act(() => {
+      frame({}, ANIMATION_DURATION_MS / 2000);
+    });
+    act(() => {
+      s().executeCommand({
+        source: 'text',
+        target: 'frontRight',
+        action: 'open',
+      });
+    });
+    act(() => {
+      frame({}, ANIMATION_DURATION_MS / 2000);
+    });
+
+    expect(s().windows.frontLeft).toBe('open');
+    expect(s().windows.frontRight).toBe('transitioning');
+    unmount();
+  });
+
+  it('cancels stale animation when the store is reset', () => {
+    const { root, frame, unmount } = mountInteraction();
+
+    act(() => {
+      s().executeCommand({
+        source: 'voice',
+        target: 'frontLeft',
+        action: 'open',
+      });
+    });
+    act(() => {
+      frame({}, ANIMATION_DURATION_MS / 2000);
+    });
+    expect(root._meshes.window_front_left.position.y).toBeLessThan(0.5);
+
+    act(() => {
+      s().resetVehicleState();
+    });
+    expect(root._meshes.window_front_left.position.y).toBe(0.5);
+
+    runAnimation(frame);
+    expect(s().windows.frontLeft).toBe('closed');
+    unmount();
+  });
+
+  it('rolls back an active transition when unmounted', () => {
+    const { unmount } = mountInteraction();
+
+    act(() => {
+      s().executeCommand({
+        source: 'text',
+        target: 'frontLeft',
+        action: 'open',
+      });
+    });
+    expect(s().windows.frontLeft).toBe('transitioning');
+
+    unmount();
+    expect(s().windows.frontLeft).toBe('closed');
+  });
+
+  it('rolls back instead of hanging when the target mesh is missing', () => {
+    const root = createWindowScene();
+    delete root._nodes.window_front_left;
+    delete root._meshes.window_front_left;
+    const { unmount } = mountInteraction(root);
+
+    act(() => {
+      s().executeCommand({
+        source: 'voice',
+        target: 'frontLeft',
+        action: 'open',
+      });
+    });
+
+    expect(s().windows.frontLeft).toBe('closed');
+    expect(s().completeWindowTransition('frontLeft')).toBe(false);
+    unmount();
   });
 });

@@ -167,4 +167,32 @@ describe('VehicleScene', () => {
       backgroundColor: '#e9ecef',
     });
   });
+
+  it('renders an opaque matte light-gray floor instead of a transparent shadow plane', () => {
+    mockUseGLTF.mockReturnValue({ scene: createMockSceneWithWindows() });
+
+    const { container } = render(<VehicleScene />);
+
+    const floorMaterial = container.querySelector('meshstandardmaterial');
+    expect(floorMaterial).not.toBeNull();
+    expect(floorMaterial).toHaveAttribute('color', '#d9dde1');
+    expect(floorMaterial).toHaveAttribute('roughness', '0.92');
+    expect(floorMaterial).toHaveAttribute('metalness', '0');
+    expect(container.querySelector('shadowmaterial')).toBeNull();
+  });
+
+  it('uses a slightly brighter balanced three-light setup', () => {
+    mockUseGLTF.mockReturnValue({ scene: createMockSceneWithWindows() });
+
+    const { container } = render(<VehicleScene />);
+
+    expect(container.querySelector('ambientlight')).toHaveAttribute(
+      'intensity',
+      '0.65',
+    );
+    const directionalLights = container.querySelectorAll('directionallight');
+    expect(directionalLights).toHaveLength(2);
+    expect(directionalLights[0]).toHaveAttribute('intensity', '3.3');
+    expect(directionalLights[1]).toHaveAttribute('intensity', '1.15');
+  });
 });
